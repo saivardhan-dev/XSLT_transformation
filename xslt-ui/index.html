@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>XSLT Transformer Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f5f5; color: #111; }
+
+        /* Topbar */
+        .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: white; border-bottom: 1px solid #e5e5e5; position: sticky; top: 0; z-index: 10; }
+        .topbar-title { font-size: 15px; font-weight: 600; }
+        .nav { display: flex; gap: 4px; }
+        .nav-btn { padding: 6px 14px; border-radius: 8px; border: none; background: transparent; color: #666; cursor: pointer; font-size: 13px; }
+        .nav-btn.active { background: #f0f0f0; color: #111; font-weight: 500; }
+        .nav-btn:hover { background: #f5f5f5; }
+
+        /* Pages */
+        .page { display: none; padding: 24px; max-width: 1100px; margin: 0 auto; }
+        .page.active { display: block; }
+
+        /* Cards */
+        .card { background: white; border: 1px solid #e5e5e5; border-radius: 12px; padding: 18px; }
+        .card-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+        /* Forms */
+        .form-row { margin-bottom: 12px; }
+        .form-label { font-size: 12px; color: #666; margin-bottom: 5px; display: block; }
+        select, textarea, input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; font-family: inherit; outline: none; }
+        select:focus, textarea:focus { border-color: #aaa; }
+        textarea { font-family: monospace; resize: vertical; }
+
+        /* Buttons */
+        .btn { width: 100%; padding: 9px; border-radius: 8px; border: 1px solid #ddd; background: #f5f5f5; color: #111; font-size: 13px; font-weight: 500; cursor: pointer; margin-top: 8px; }
+        .btn:hover { background: #ebebeb; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-danger { color: #A32D2D; border-color: #f0c0c0; background: #fff5f5; }
+        .btn-small { width: auto; padding: 4px 12px; margin: 0; font-size: 11px; }
+        .btn-refresh { padding: 7px 14px; border-radius: 8px; border: 1px solid #ddd; background: white; font-size: 12px; cursor: pointer; }
+
+        /* Stats */
+        .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+        .stat-card { background: white; border: 1px solid #e5e5e5; border-radius: 10px; padding: 14px; }
+        .stat-label { font-size: 11px; color: #888; margin-bottom: 6px; }
+        .stat-value { font-size: 24px; font-weight: 600; }
+        .stat-value.red { color: #A32D2D; }
+        .stat-value.green { color: #3B6D11; }
+        .stat-value.sm { font-size: 14px; margin-top: 4px; }
+
+        /* Badges */
+        .badge { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 500; }
+        .badge-entry  { background: #E6F1FB; color: #0C447C; }
+        .badge-exit   { background: #EAF3DE; color: #27500A; }
+        .badge-error  { background: #FCEBEB; color: #791F1F; }
+        .badge-active { background: #EAF3DE; color: #27500A; }
+
+        /* Table */
+        .filter-row { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+        .filter-row select { width: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { text-align: left; font-size: 11px; color: #888; padding: 7px 10px; border-bottom: 1px solid #eee; font-weight: 500; }
+        td { padding: 9px 10px; border-bottom: 1px solid #eee; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #fafafa; }
+
+        /* Misc */
+        .mono { font-family: monospace; font-size: 11px; color: #666; }
+        .status-msg { padding: 9px 12px; border-radius: 8px; font-size: 13px; margin: 10px 0; }
+        .status-msg.success { background: #EAF3DE; color: #27500A; }
+        .status-msg.error   { background: #FCEBEB; color: #791F1F; }
+        .audit-trail { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+        .audit-table-wrap { overflow-x: auto; }
+        table { min-width: 900px; }
+        td, th { white-space: nowrap; }
+        .trail-item { font-size: 13px; color: #444; display: flex; align-items: center; gap: 8px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .dot.green { background: #639922; }
+        .cache-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .cache-row:last-of-type { border-bottom: none; }
+        .cache-source { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+        .evict-btn { font-size: 11px; padding: 4px 12px; border-radius: 6px; border: 1px solid #f0c0c0; background: #fff5f5; color: #A32D2D; cursor: pointer; }
+        .queue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .queue-card { background: white; border: 1px solid #e5e5e5; border-radius: 10px; padding: 14px; }
+        .queue-name { font-size: 13px; font-weight: 500; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .queue-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .queue-stat { font-size: 11px; color: #888; }
+        .queue-stat span { font-size: 18px; font-weight: 600; color: #111; display: block; margin-bottom: 2px; }
+        .placeholder { color: #aaa; font-size: 13px; text-align: center; padding: 40px 0; }
+        .loading { color: #aaa; font-size: 13px; text-align: center; padding: 30px 0; }
+        .note { font-size: 12px; color: #888; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+    <span class="topbar-title">XSLT Transformer</span>
+    <div class="nav">
+        <button class="nav-btn active" onclick="showPage('send', this)">Send & Transform</button>
+        <button class="nav-btn" onclick="showPage('audits', this)">Audit Logs</button>
+        <button class="nav-btn" onclick="showPage('queues', this)">Queues</button>
+        <button class="nav-btn" onclick="showPage('cache', this)">Cache</button>
+        <a href="http://localhost:8080/swagger-ui.html"
+           target="_blank"
+           style="
+               padding: 6px 14px;
+               border-radius: 8px;
+               border: 1px solid #ddd;
+               background: white;
+               color: #185FA5;
+               font-size: 13px;
+               text-decoration: none;
+               display: flex;
+               align-items: center;
+               gap: 4px;
+               margin-left: 8px;
+           ">
+            API Docs ↗
+        </a>
+    </div>
+</div>
+
+<!-- PAGE 1: Send & Transform -->
+<div class="page active" id="page-send">
+    <div class="two-col">
+        <div class="card">
+            <div class="card-title">Send message</div>
+            <div class="form-row">
+                <label class="form-label">JSON payload</label>
+                <textarea id="payload" rows="10">{
+  "Source": "SourceA",
+  "Item": "itemA",
+  "Price": "PriceA",
+  "Location": "LocationA",
+  "Store": "StoreA"
+}</textarea>
+            </div>
+            <button class="btn" id="send-btn" onclick="sendMessage()">Transform →</button>
+            <div id="send-status"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Audit trail</div>
+            <div id="trail-content">
+                <div class="placeholder">Send a message to see the audit trail</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PAGE 2: Audit Logs -->
+<div class="page" id="page-audits">
+    <div class="stat-row">
+        <div class="stat-card"><div class="stat-label">Total audits</div><div class="stat-value" id="total-audits">—</div></div>
+        <div class="stat-card"><div class="stat-label">Sources active</div><div class="stat-value" id="total-sources">—</div></div>
+        <div class="stat-card"><div class="stat-label">Errors</div><div class="stat-value red" id="total-errors">—</div></div>
+        <div class="stat-card"><div class="stat-label">Showing</div><div class="stat-value sm" id="showing-count">—</div></div>
+    </div>
+    <div class="card">
+        <div class="filter-row">
+            <select id="filter-source" onchange="filterAudits()">
+                <option value="">All sources</option>
+            </select>
+            <select id="filter-event" onchange="filterAudits()">
+                <option value="">All events</option>
+                <option>ENTRY</option>
+                <option>EXIT</option>
+                <option>ERROR</option>
+            </select>
+            <button class="btn-refresh" onclick="loadAudits()">Refresh</button>
+        </div>
+        <div id="audit-table-container">
+            <div class="loading">Loading audits...</div>
+        </div>
+    </div>
+</div>
+
+
+<!-- PAGE 3: Queues -->
+<div class="page" id="page-queues">
+    <div class="card">
+        <div class="card-title">Queue links — ActiveMQ Console</div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #eee;">
+            <a href="http://localhost:8161/admin/queues.jsp" target="_blank"
+               style="font-size:13px;color:#185FA5;">
+                View all queues in ActiveMQ →
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- PAGE 4: Cache -->
+<div class="page" id="page-cache">
+    <div class="two-col">
+        <div class="card">
+            <div class="card-title">Cached XSLT files</div>
+            <div id="cache-status"></div>
+            <div id="cache-list"><div class="loading">Loading...</div></div>
+            <button class="btn btn-danger" onclick="evictAll()" style="margin-top:12px;">Evict all</button>
+        </div>
+        <div class="card">
+            <div class="card-title">Active Camel routes</div>
+            <div id="routes-list"><div class="loading">Loading...</div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const BASE = 'http://localhost:8080/api'
+    let allAudits = []
+
+    function showPage(name, btn) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'))
+        document.getElementById('page-' + name).classList.add('active')
+        btn.classList.add('active')
+
+        if (name === 'audits') loadAudits()
+        if (name === 'cache')  loadCache()
+    }
+
+    async function sendMessage() {
+        const btn      = document.getElementById('send-btn')
+        const payload  = document.getElementById('payload').value
+        const statusEl = document.getElementById('send-status')
+        const trailEl  = document.getElementById('trail-content')
+
+        btn.disabled = true
+        btn.textContent = 'Sending...'
+        statusEl.innerHTML = ''
+        trailEl.innerHTML = '<div class="loading">Processing...</div>'
+
+        try {
+            // Step 1: Send message
+            const res  = await fetch(`${BASE}/messages/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload
+            })
+            const data = await res.json()
+
+            if (!res.ok) throw new Error(data.message || 'Failed')
+
+            statusEl.innerHTML =
+                `<div class="status-msg success">${data.message}</div>`
+
+            // Step 2: Wait briefly for processing then fetch audit
+            await new Promise(r => setTimeout(r, 1500))
+
+            // Step 3: Get latest audits and find transformed XML
+            const auditRes = await fetch(`${BASE}/audits`)
+            const audits   = await auditRes.json()
+
+            // Parse source from payload
+            let source = 'Unknown'
+            try { source = JSON.parse(payload).Source } catch(e) {}
+
+            // Find EXIT audit for Amq-json-in-{Source} — that has the transformed XML
+            const transformedAudit = audits
+                .filter(a =>
+                    a.source    === source &&
+                    a.eventType === 'EXIT' &&
+                    a.queueName === `Amq-json-in-${source}`)
+                .sort((a, b) =>
+                    new Date(b.timestamp) - new Date(a.timestamp))[0]
+
+            const transformedXml = transformedAudit?.payload || null
+
+            // Step 4: Show audit trail + transformed XML
+            trailEl.innerHTML = `
+            <div class="audit-trail">
+                ${[
+                'ENTRY → Amq-json-Q1',
+                'EXIT  → Amq-json-Q1',
+                `ENTRY → Amq-json-in-${source}`,
+                `EXIT  → Amq-json-in-${source}`,
+                `ENTRY → Amq-xml-out-${source}`
+            ].map(t => `
+                    <div class="trail-item">
+                        <span class="dot green"></span>
+                        <span class="mono">${t}</span>
+                    </div>`).join('')}
+            </div>
+
+            ${transformedXml ? `
+            <div style="margin-top:14px;">
+                <div class="card-title" style="margin-bottom:8px;">
+                    Transformed XML
+                </div>
+                <pre style="
+                    background:#f5f5f5;
+                    border:1px solid #e5e5e5;
+                    border-radius:8px;
+                    padding:12px;
+                    font-size:11px;
+                    font-family:monospace;
+                    overflow:auto;
+                    white-space:pre-wrap;
+                    color:#111;
+                ">${escapeHtml(transformedXml)}</pre>
+            </div>` : `
+            <div class="note">
+                Check Audit Logs tab for full details
+            </div>`}`
+
+        } catch(e) {
+            statusEl.innerHTML =
+                `<div class="status-msg error">${e.message}</div>`
+            trailEl.innerHTML =
+                `<div class="placeholder">Send failed — check logs</div>`
+        } finally {
+            btn.disabled = false
+            btn.textContent = 'Transform →'
+        }
+    }
+
+    // Helper to safely display XML in HTML
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+    }
+
+    // ── Audit Logs ───────────────────────────────────────────────
+    async function loadAudits() {
+        document.getElementById('audit-table-container').innerHTML =
+            '<div class="loading">Loading audits...</div>'
+        try {
+            const res = await fetch(`${BASE}/audits`)
+            allAudits = await res.json()
+
+            const sources = [...new Set(allAudits.map(a => a.source).filter(Boolean))]
+            const srcSel  = document.getElementById('filter-source')
+            const current = srcSel.value
+            srcSel.innerHTML = '<option value="">All sources</option>' +
+                sources.map(s => `<option ${s===current?'selected':''}>${s}</option>`).join('')
+
+            document.getElementById('total-audits').textContent  = allAudits.length
+            document.getElementById('total-sources').textContent = sources.length
+            document.getElementById('total-errors').textContent  =
+                allAudits.filter(a => a.eventType === 'ERROR').length
+
+            filterAudits()
+        } catch(e) {
+            document.getElementById('audit-table-container').innerHTML =
+                `<div class="status-msg error">Failed to load audits: ${e.message}</div>`
+        }
+    }
+
+    function filterAudits() {
+        const src = document.getElementById('filter-source').value
+        const evt = document.getElementById('filter-event').value
+
+        const filtered = allAudits.filter(a =>
+            (!src || a.source    === src) &&
+            (!evt || a.eventType === evt)
+        )
+
+        document.getElementById('showing-count').textContent = filtered.length + ' records'
+
+        if (filtered.length === 0) {
+            document.getElementById('audit-table-container').innerHTML =
+                '<div class="placeholder">No audits found</div>'
+            return
+        }
+
+        document.getElementById('audit-table-container').innerHTML = `
+      <div class="audit-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Message ID</th>
+            <th>Source</th>
+            <th>Queue</th>
+            <th>Event</th>
+            <th>Timestamp</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(a => `
+            <tr>
+              <td class="mono">${a.messageId || '-'}</td>
+              <td>${a.source || '-'}</td>
+              <td class="mono">${a.queueName || '-'}</td>
+              <td><span class="badge badge-${(a.eventType||'').toLowerCase()}">${a.eventType}</span></td>
+              <td class="mono">${a.timestamp ? new Date(a.timestamp).toLocaleString() : '-'}</td>
+              <td class="mono" style="color:#A32D2D">${a.errorMessage || '-'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      </div>`
+    }
+
+    // ── Cache ────────────────────────────────────────────────────
+    async function loadCache() {
+        try {
+            const res  = await fetch(`${BASE}/cache/status`)
+            const data = await res.json()
+
+            const sources = data.cachedSources ? [...data.cachedSources] : []
+            const routes  = data.activeRoutes  ? [...data.activeRoutes]  : []
+
+            document.getElementById('cache-list').innerHTML =
+                sources.length === 0
+                    ? '<div class="placeholder">No XSLT files cached yet</div>'
+                    : sources.map(s => `
+              <div class="cache-row">
+                <div>
+                  <div class="cache-source">${s}</div>
+                  <div class="mono">${s}.xslt — loaded</div>
+                </div>
+                <button class="evict-btn" onclick="evictOne('${s}')">Evict</button>
+              </div>`).join('')
+
+            document.getElementById('routes-list').innerHTML =
+                routes.length === 0
+                    ? '<div class="placeholder">No active routes yet</div>'
+                    : routes.map(r => `
+              <div class="cache-row">
+                <div class="cache-source">${r}</div>
+                <span class="badge badge-active">active</span>
+              </div>`).join('')
+
+        } catch(e) {
+            document.getElementById('cache-list').innerHTML =
+                `<div class="status-msg error">Failed to load cache: ${e.message}</div>`
+        }
+    }
+
+    async function evictOne(source) {
+        try {
+            await fetch(`${BASE}/cache/evict/${source}`, { method: 'DELETE' })
+            document.getElementById('cache-status').innerHTML =
+                `<div class="status-msg success">${source} evicted successfully</div>`
+            loadCache()
+        } catch(e) {
+            document.getElementById('cache-status').innerHTML =
+                `<div class="status-msg error">Eviction failed</div>`
+        }
+    }
+
+    async function evictAll() {
+        try {
+            await fetch(`${BASE}/cache/evict/all`, { method: 'DELETE' })
+            document.getElementById('cache-status').innerHTML =
+                `<div class="status-msg success">All cache cleared</div>`
+            loadCache()
+        } catch(e) {
+            document.getElementById('cache-status').innerHTML =
+                `<div class="status-msg error">Failed to clear cache</div>`
+        }
+    }
+
+    // Load audits on start
+    loadAudits()
+</script>
+</body>
+</html>
